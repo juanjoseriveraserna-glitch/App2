@@ -1,0 +1,1185 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#1a3a6b">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CDI Chequeo">
+<title>CDI – Listas de Chequeo</title>
+
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;700;800&family=Barlow:wght@400;500;600&display=swap');
+
+/* ── RESET & BASE ── */
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --azul:#1a3a6b; --azul2:#2563a8; --azul3:#e8f0fb;
+  --verde:#16a34a; --rojo:#dc2626; --naranja:#d97706;
+  --gris:#f1f5f9; --borde:#dde3ec; --txt:#1e293b;
+  --shadow:0 2px 12px rgba(26,58,107,.13);
+  --r:10px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bot: env(safe-area-inset-bottom, 0px);
+}
+html{height:100%;overflow:hidden}
+body{
+  font-family:'Barlow',sans-serif;
+  background:#e4eaf4;
+  color:var(--txt);
+  height:100%;
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+}
+
+/* ── TOP BAR ── */
+.topbar{
+  background:var(--azul);
+  color:#fff;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:12px 16px;
+  padding-top:calc(12px + var(--safe-top));
+  box-shadow:0 3px 10px rgba(0,0,0,.35);
+  flex-shrink:0;
+  z-index:100;
+}
+.topbar-logo{
+  background:#fff;
+  color:var(--azul);
+  font-family:'Barlow Condensed',sans-serif;
+  font-weight:800;
+  font-size:1.2em;
+  padding:4px 10px;
+  border-radius:5px;
+  letter-spacing:2px;
+  flex-shrink:0;
+}
+.topbar-info{flex:1;min-width:0}
+.topbar-info h1{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:1.05em;
+  font-weight:700;
+  letter-spacing:.5px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.topbar-info p{font-size:.72em;opacity:.7;margin-top:1px}
+.topbar-btn{
+  background:rgba(255,255,255,.15);
+  border:none;
+  color:#fff;
+  border-radius:8px;
+  padding:8px 12px;
+  font-size:.8em;
+  font-family:'Barlow Condensed',sans-serif;
+  font-weight:700;
+  cursor:pointer;
+  flex-shrink:0;
+  display:none;
+}
+.topbar-btn.show{display:block}
+
+/* ── MAIN SCROLL AREA ── */
+.scroll-area{
+  flex:1;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  padding-bottom:calc(16px + var(--safe-bot));
+}
+
+/* ══════════ MENÚ PRINCIPAL ══════════ */
+#menuPage{padding:16px}
+.menu-subtitle{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:1.1em;
+  font-weight:700;
+  color:var(--azul);
+  margin-bottom:12px;
+  padding-left:4px;
+  border-left:4px solid var(--azul2);
+  padding-left:10px;
+}
+.menu-grid{display:flex;flex-direction:column;gap:10px}
+
+.eq-card{
+  background:#fff;
+  border-radius:var(--r);
+  box-shadow:var(--shadow);
+  padding:14px 16px;
+  display:flex;
+  align-items:center;
+  gap:14px;
+  cursor:pointer;
+  border:1.5px solid transparent;
+  transition:all .2s;
+  -webkit-user-select:none;
+  user-select:none;
+}
+.eq-card:active{transform:scale(.98);border-color:var(--azul2)}
+.eq-num{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:2em;
+  font-weight:800;
+  color:var(--azul);
+  opacity:.18;
+  min-width:36px;
+  text-align:center;
+  line-height:1;
+}
+.eq-info{flex:1;min-width:0}
+.eq-info h3{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:1em;
+  font-weight:700;
+  color:var(--azul);
+  line-height:1.25;
+}
+.eq-info p{font-size:.78em;color:#64748b;margin-top:3px}
+.eq-badge{
+  font-size:.68em;
+  font-weight:600;
+  background:var(--azul3);
+  color:var(--azul2);
+  padding:2px 8px;
+  border-radius:20px;
+  white-space:nowrap;
+}
+.eq-arrow{
+  color:var(--azul2);
+  font-size:1.3em;
+  opacity:.5;
+}
+
+/* offline badge en menú */
+.offline-bar{
+  background:#fef3c7;
+  border:1px solid #fcd34d;
+  color:#92400e;
+  text-align:center;
+  padding:8px;
+  font-size:.8em;
+  border-radius:8px;
+  margin-bottom:12px;
+  display:none;
+}
+.offline-bar.show{display:block}
+
+/* install banner */
+.install-banner{
+  background:linear-gradient(135deg,var(--azul),var(--azul2));
+  color:#fff;
+  border-radius:var(--r);
+  padding:14px 16px;
+  margin-bottom:14px;
+  display:none;
+  align-items:center;
+  gap:12px;
+}
+.install-banner.show{display:flex}
+.install-banner p{flex:1;font-size:.85em;line-height:1.4}
+.install-banner button{
+  background:#fff;
+  color:var(--azul);
+  border:none;
+  border-radius:6px;
+  padding:8px 14px;
+  font-family:'Barlow Condensed',sans-serif;
+  font-weight:700;
+  font-size:.9em;
+  cursor:pointer;
+  white-space:nowrap;
+}
+
+/* ══════════ FORMULARIO ══════════ */
+#formPage{display:none;padding:0}
+.form-paper{
+  background:#fff;
+  margin:12px;
+  border-radius:var(--r);
+  box-shadow:var(--shadow);
+  overflow:hidden;
+}
+
+/* Cabecera del form */
+.fh{
+  background:var(--azul);
+  color:#fff;
+  display:grid;
+  grid-template-columns:90px 1fr 100px;
+}
+.fh-logo{
+  padding:10px;
+  text-align:center;
+  font-size:.65em;
+  font-weight:700;
+  color:#fff;
+  border-right:1px solid rgba(255,255,255,.2);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:2px;
+}
+.fh-logo .logo-box{
+  background:#fff;
+  color:var(--azul);
+  font-family:'Barlow Condensed',sans-serif;
+  font-weight:800;
+  font-size:1.6em;
+  padding:3px 8px;
+  border-radius:4px;
+  letter-spacing:2px;
+  margin-bottom:4px;
+}
+.fh-titulo{
+  padding:10px 12px;
+  text-align:center;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+}
+.fh-titulo h2{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:.95em;
+  font-weight:700;
+  letter-spacing:.5px;
+}
+.fh-titulo p{font-size:.68em;opacity:.8;margin-top:2px;line-height:1.3}
+.fh-cod{
+  padding:10px 8px;
+  text-align:center;
+  font-size:.7em;
+  border-left:1px solid rgba(255,255,255,.2);
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  gap:6px;
+}
+.fh-cod strong{display:block;font-size:.85em;opacity:.7}
+
+/* campos de info */
+.fi-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  border-bottom:2px solid var(--azul);
+}
+.fi-field{
+  display:flex;
+  flex-direction:column;
+  padding:8px 10px;
+  border-right:1px solid var(--borde);
+  border-bottom:1px solid var(--borde);
+}
+.fi-field:nth-child(even){border-right:none}
+.fi-field label{
+  font-size:.68em;
+  font-weight:700;
+  color:var(--azul);
+  text-transform:uppercase;
+  letter-spacing:.4px;
+  margin-bottom:3px;
+}
+.fi-field input,.fi-field select{
+  border:none;
+  border-bottom:1.5px solid var(--borde);
+  font-family:'Barlow',sans-serif;
+  font-size:.85em;
+  padding:3px 0;
+  background:transparent;
+  color:var(--txt);
+}
+.fi-field input:focus,.fi-field select:focus{
+  outline:none;
+  border-bottom-color:var(--azul2);
+}
+.fi-field input[readonly]{color:#64748b}
+
+/* tabla scroll horizontal en móvil */
+.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;padding:12px}
+table.chk{
+  width:100%;
+  border-collapse:collapse;
+  border:2px solid var(--azul);
+  font-size:.78em;
+  min-width:480px;
+}
+table.chk thead{background:var(--azul);color:#fff}
+table.chk th{
+  border:1px solid rgba(255,255,255,.2);
+  padding:6px 3px;
+  text-align:center;
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:.9em;
+  font-weight:600;
+}
+table.chk th.cond-head{text-align:left;padding-left:8px}
+table.chk td{
+  border:1px solid var(--borde);
+  padding:5px 3px;
+  text-align:center;
+  vertical-align:middle;
+}
+table.chk td.cond-cell{
+  text-align:left;
+  padding-left:8px;
+  font-size:.9em;
+  white-space:nowrap;
+}
+table.chk td.num-cell{
+  font-weight:700;
+  color:var(--azul);
+  font-size:.85em;
+}
+table.chk tbody tr:nth-child(even){background:#f8fafc}
+
+/* checkboxes grandes para móvil */
+.chkbox{
+  width:22px;height:22px;
+  cursor:pointer;
+  accent-color:var(--azul2);
+}
+.th-bm{background:#2563a8 !important}
+
+/* firmas */
+.f-firmas{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:10px;
+  padding:12px;
+  background:var(--gris);
+  border-top:2px solid var(--azul);
+}
+.firma-box{
+  border-top:2px solid var(--azul);
+  padding-top:6px;
+}
+.firma-box label{
+  display:block;
+  font-size:.68em;
+  font-weight:700;
+  color:var(--azul);
+  letter-spacing:.4px;
+  margin-bottom:4px;
+}
+.firma-box input{
+  width:100%;
+  border:none;
+  border-bottom:1.5px solid var(--borde);
+  font-family:'Barlow',sans-serif;
+  font-size:.9em;
+  padding:4px 0;
+  background:transparent;
+}
+.firma-box input:focus{outline:none;border-bottom-color:var(--azul2)}
+
+/* obs */
+.f-obs{padding:12px}
+.f-obs label{
+  display:block;
+  font-size:.72em;
+  font-weight:700;
+  color:var(--azul);
+  text-transform:uppercase;
+  letter-spacing:.4px;
+  margin-bottom:6px;
+}
+.f-obs textarea{
+  width:100%;
+  min-height:80px;
+  border:1.5px solid var(--borde);
+  border-radius:6px;
+  padding:10px;
+  font-family:'Barlow',sans-serif;
+  font-size:.88em;
+  resize:vertical;
+}
+.f-obs textarea:focus{outline:none;border-color:var(--azul2)}
+
+/* drive url */
+.drive-row{
+  padding:0 12px 12px;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+.drive-row label{
+  font-size:.7em;
+  font-weight:700;
+  color:var(--azul);
+  text-transform:uppercase;
+}
+.drive-row span{
+  font-size:.7em;
+  color:var(--azul2);
+  cursor:pointer;
+  text-decoration:underline;
+}
+.drive-row input{
+  border:1.5px solid var(--borde);
+  border-radius:6px;
+  padding:8px 10px;
+  font-size:.82em;
+  font-family:'Barlow',sans-serif;
+  background:var(--gris);
+}
+.drive-row input:focus{outline:none;border-color:var(--azul2);background:#fff}
+
+/* alerta */
+.alert{
+  margin:0 12px 10px;
+  padding:12px 14px;
+  border-radius:8px;
+  font-size:.85em;
+  display:none;
+  align-items:center;
+  gap:8px;
+  font-weight:500;
+}
+.alert.show{display:flex}
+.alert-ok{background:#dcfce7;border:1.5px solid #86efac;color:#166534}
+.alert-err{background:#fee2e2;border:1.5px solid #fca5a5;color:#991b1b}
+
+/* botones inferiores */
+.f-btns{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  padding:12px;
+  padding-bottom:calc(12px + var(--safe-bot));
+  background:#f8fafc;
+  border-top:1px solid var(--borde);
+}
+.btn{
+  width:100%;
+  padding:13px;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:1.05em;
+  font-weight:700;
+  letter-spacing:.5px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  transition:all .15s;
+}
+.btn:active{transform:scale(.97)}
+.btn-back{background:#64748b;color:#fff}
+.btn-print{background:var(--azul2);color:#fff}
+.btn-save{background:var(--verde);color:#fff;font-size:1.1em;padding:15px}
+
+/* ══════ HISTORIAL ══════ */
+#histPage{display:none;padding:16px}
+.hist-card{
+  background:#fff;
+  border-radius:var(--r);
+  box-shadow:var(--shadow);
+  padding:14px;
+  margin-bottom:10px;
+  border-left:4px solid var(--azul2);
+}
+.hist-card h4{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:1em;
+  color:var(--azul);
+  margin-bottom:4px;
+}
+.hist-card p{font-size:.8em;color:#64748b;margin:2px 0}
+.hist-empty{text-align:center;color:#94a3b8;padding:40px 20px;font-size:.9em}
+
+/* ══════ BOTTOM NAV ══════ */
+.bottom-nav{
+  background:#fff;
+  border-top:1.5px solid var(--borde);
+  display:flex;
+  flex-shrink:0;
+  padding-bottom:var(--safe-bot);
+  box-shadow:0 -3px 12px rgba(0,0,0,.08);
+}
+.nav-btn{
+  flex:1;
+  border:none;
+  background:none;
+  padding:10px 4px 8px;
+  cursor:pointer;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:3px;
+  color:#94a3b8;
+  transition:color .15s;
+  font-family:'Barlow',sans-serif;
+  font-size:.68em;
+  font-weight:600;
+}
+.nav-btn svg{width:22px;height:22px;stroke-width:2}
+.nav-btn.active{color:var(--azul2)}
+.nav-btn:active{opacity:.7}
+
+/* ══════ MODAL DRIVE INFO ══════ */
+.modal-bg{
+  position:fixed;inset:0;
+  background:rgba(0,0,0,.55);
+  z-index:200;
+  display:none;
+  align-items:flex-end;
+  justify-content:center;
+  padding-bottom:var(--safe-bot);
+}
+.modal-bg.open{display:flex}
+.modal{
+  background:#fff;
+  border-radius:16px 16px 0 0;
+  padding:20px;
+  width:100%;
+  max-width:540px;
+  max-height:80vh;
+  overflow-y:auto;
+}
+.modal-handle{
+  width:40px;height:4px;background:#e2e8f0;
+  border-radius:2px;margin:0 auto 16px;
+}
+.modal h3{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:1.2em;color:var(--azul);margin-bottom:10px
+}
+.modal ol{padding-left:18px}
+.modal ol li{margin:8px 0;font-size:.85em;line-height:1.5}
+.modal code{
+  background:#f1f5f9;padding:2px 6px;
+  border-radius:3px;font-size:.82em;color:var(--rojo)
+}
+.modal .btn-close{
+  margin-top:16px;width:100%;padding:12px;
+  background:var(--azul);color:#fff;border:none;
+  border-radius:8px;cursor:pointer;
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:1.05em;font-weight:700;
+}
+
+/* ══════ LOADING SPINNER ══════ */
+.spinner{
+  display:none;
+  position:fixed;inset:0;
+  background:rgba(26,58,107,.7);
+  z-index:300;
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;
+  gap:16px;
+  color:#fff;
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:1.1em;
+}
+.spinner.show{display:flex}
+.spin-ring{
+  width:50px;height:50px;
+  border:4px solid rgba(255,255,255,.3);
+  border-top-color:#fff;
+  border-radius:50%;
+  animation:spin .8s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ══════ RESPONSIVE DESKTOP ══════ */
+@media(min-width:600px){
+  .menu-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+  }
+  .f-firmas{grid-template-columns:1fr 1fr 1fr}
+  .f-btns{flex-direction:row}
+  .btn{width:auto;flex:1}
+}
+@media(min-width:900px){
+  .menu-grid{grid-template-columns:1fr 1fr 1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-logo">CDI</div>
+  <div class="topbar-info">
+    <h1 id="topTitle">Sistema de Chequeo</h1>
+    <p>Centro de Diagnóstico Automotriz de Pasto</p>
+  </div>
+  <button class="topbar-btn" id="btnVolver" onclick="irMenu()">← Menú</button>
+</div>
+
+<!-- CONTENIDO SCROLLABLE -->
+<div class="scroll-area" id="scrollArea">
+
+  <!-- ══════ PÁGINA MENÚ ══════ -->
+  <div id="menuPage">
+    <div style="padding:16px 16px 0">
+      <div class="install-banner" id="installBanner">
+        <p>📲 <strong>¡Instala la app!</strong> Úsala sin internet y como app nativa en tu celular.</p>
+        <button id="btnInstall">Instalar</button>
+      </div>
+      <div class="offline-bar" id="offlineBar">
+        📴 Sin conexión — La app funciona offline. Los datos se guardan localmente.
+      </div>
+    </div>
+    <div style="padding:0 16px 8px">
+      <p class="menu-subtitle">Selecciona un equipo</p>
+    </div>
+    <div class="menu-grid" id="menuGrid" style="padding:0 16px 16px"></div>
+  </div>
+
+  <!-- ══════ PÁGINA FORMULARIO ══════ -->
+  <div id="formPage">
+    <div class="form-paper">
+
+      <!-- CABECERA -->
+      <div class="fh" id="fhHeader">
+        <div class="fh-logo">
+          <div class="logo-box">CDI</div>
+          <span>NIT: 800.253.040-2</span>
+          <span>CARRERA 2 N°21DN-170</span>
+        </div>
+        <div class="fh-titulo">
+          <h2>LISTA DE CHEQUEO</h2>
+          <p id="fh-nombre"></p>
+        </div>
+        <div class="fh-cod">
+          <div><strong>CÓDIGO</strong><span id="fh-cod"></span></div>
+          <div><strong>VERSIÓN</strong><span id="fh-ver"></span></div>
+        </div>
+      </div>
+
+      <!-- INFO EQUIPO -->
+      <div class="fi-grid">
+        <div class="fi-field">
+          <label>FICHA No.</label>
+          <input type="number" id="fi-ficha" placeholder="001" inputmode="numeric">
+        </div>
+        <div class="fi-field">
+          <label>LUGAR</label>
+          <input type="text" id="fi-lugar">
+        </div>
+        <div class="fi-field">
+          <label>MES – AÑO</label>
+          <input type="month" id="fi-mes">
+        </div>
+        <div class="fi-field">
+          <label>MARCA</label>
+          <input type="text" id="fi-marca" readonly>
+        </div>
+      </div>
+
+      <!-- TABLA CHEQUEO -->
+      <div class="table-wrap">
+        <table class="chk" id="chkTable">
+          <thead id="chkHead"></thead>
+          <tbody id="chkBody"></tbody>
+        </table>
+      </div>
+
+      <!-- FIRMAS -->
+      <div class="f-firmas">
+        <div class="firma-box">
+          <label>FIRMA PERSONA RESPONSABLE</label>
+          <input type="text" id="fi-firma" placeholder="Nombre completo">
+        </div>
+        <div class="firma-box">
+          <label>MANTENIMIENTO SEMANAL</label>
+          <input type="text" id="fi-mant" placeholder="">
+        </div>
+        <div class="firma-box">
+          <label>FECHA DE REGISTRO</label>
+          <input type="date" id="fi-fecha">
+        </div>
+      </div>
+
+      <!-- OBSERVACIONES -->
+      <div class="f-obs">
+        <label>Observaciones</label>
+        <textarea id="fi-obs" placeholder="Escriba aquí cualquier observación importante..."></textarea>
+      </div>
+
+      <!-- URL DRIVE -->
+      <div class="drive-row">
+        <label>URL Google Drive (opcional)
+          <span onclick="openModal()"> — ¿Cómo configurar?</span>
+        </label>
+        <input type="url" id="fi-drive"
+          placeholder="https://script.google.com/macros/s/.../exec">
+      </div>
+
+      <!-- ALERTAS -->
+      <div class="alert alert-ok" id="alertOk">✅ Planilla guardada y Excel descargado.</div>
+      <div class="alert alert-err" id="alertErr">⚠️ No se pudo enviar a Drive. El Excel sí se descargó localmente.</div>
+
+      <!-- BOTONES -->
+      <div class="f-btns">
+        <button class="btn btn-back" onclick="irMenu()">← Volver</button>
+        <button class="btn btn-print" onclick="window.print()">🖨️ Imprimir</button>
+        <button class="btn btn-save" onclick="guardar()">✅ GUARDAR Y EXPORTAR EXCEL</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════ PÁGINA HISTORIAL ══════ -->
+  <div id="histPage">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:0 0 12px">
+      <p class="menu-subtitle" style="margin:0">Registros guardados</p>
+      <button onclick="limpiarHistorial()"
+        style="background:none;border:none;color:var(--rojo);font-size:.8em;cursor:pointer;font-weight:600">
+        Limpiar todo
+      </button>
+    </div>
+    <div id="histList"></div>
+  </div>
+
+</div><!-- /scroll-area -->
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+  <button class="nav-btn active" id="nav0" onclick="navTo(0)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    Equipos
+  </button>
+  <button class="nav-btn" id="nav1" onclick="navTo(1)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><polyline points="9 12 11 14 15 10"/></svg>
+    Historial
+  </button>
+  <button class="nav-btn" id="nav2" onclick="openModal()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    Ayuda
+  </button>
+</nav>
+
+<!-- MODAL AYUDA DRIVE -->
+<div class="modal-bg" id="driveModal" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h3>📂 Guardar automáticamente en Google Drive</h3>
+    <p style="font-size:.82em;color:#64748b;margin-bottom:10px">
+      El Excel se descarga a tu dispositivo. Para que también quede en Drive automáticamente, configura esto <strong>una sola vez</strong>:
+    </p>
+    <ol>
+      <li>Abre <strong>script.google.com</strong> e inicia sesión con tu cuenta de Google.</li>
+      <li>Crea un proyecto nuevo y pega el código del archivo <code>apps_script_drive.js</code>.</li>
+      <li>Reemplaza <code>ID_DE_LA_CARPETA</code> con el ID de tu carpeta de Drive (está en la URL de la carpeta).</li>
+      <li>Clic en <strong>Implementar → Nueva implementación → Aplicación web</strong>. Elige "Cualquier usuario".</li>
+      <li>Copia la URL generada y pégala en el campo <em>"URL Google Drive"</em> del formulario.</li>
+    </ol>
+    <p style="font-size:.78em;margin-top:10px;color:#64748b">
+      Desde ese momento, cada vez que guardes una planilla, el Excel se sube automáticamente a Drive y queda registrado en un historial de Google Sheets.
+    </p>
+    <h3 style="margin-top:16px;font-size:1em">📲 Cómo instalar esta app en tu celular</h3>
+    <p style="font-size:.82em;color:#64748b;margin-top:6px"><strong>Android (Chrome):</strong> Toca los 3 puntos del menú → "Añadir a pantalla de inicio"</p>
+    <p style="font-size:.82em;color:#64748b;margin-top:6px"><strong>iPhone (Safari):</strong> Toca el botón compartir (□↑) → "Añadir a pantalla de inicio"</p>
+    <button class="btn-close" onclick="closeModal()">Entendido</button>
+  </div>
+</div>
+
+<!-- SPINNER -->
+<div class="spinner" id="spinner">
+  <div class="spin-ring"></div>
+  <span>Generando Excel...</span>
+</div>
+
+<script>
+// ══════════════════════════════════════════════
+//  DATOS DE LOS 7 EQUIPOS
+// ══════════════════════════════════════════════
+const EQUIPOS = [
+  {id:1,nombre:'Analizador de Gases\n+ Plataforma Elevadora',
+   titulo:'EQUIPO ANALIZADOR DE GASES Y PLATAFORMA ELEVADORA',
+   marca:'SOLTELEC - 83838AII0211',plataforma:'PLATAFORMA ELV0080810',
+   linea:'LINEA MOTOS',codigo:'F-MT-02',version:'03',
+   items:['Conexiones eléctricas y red','Enciende la torre del equipo',
+          'Enciende monitor del equipo','Teclado','Ratón (Mouse)',
+          'Sistema de filtros','Bomba de succión','Sistema de mangueras',
+          'Sonda de gases','Captador de RPM','Sonda de temperatura',
+          'Plancha elevadora (ELEVADOR)','Sistema neumático (ELEVADOR)',
+          'Tornillos y sistema móvil (ELEVADOR)','Sistema de bloqueo (ELEVADOR)',
+          'Cámara fotográfica']},
+  {id:2,nombre:'Analizador de Gases\n+ Sonómetro',
+   titulo:'EQUIPO ANALIZADOR DE GASES + SONÓMETRO',
+   marca:'GOLD ELECTRONIC',plataforma:'GED50229A11',
+   linea:'LINEA MOTOS',codigo:'F-MT-03',version:'02',
+   items:['Conexiones eléctricas y red','Enciende la torre del equipo',
+          'Enciende monitor del equipo','Teclado','Ratón (Mouse)',
+          'Sistema de filtros','Bomba de succión','Sistema de mangueras',
+          'Sonda de gases','Captador de RPM','Sonda de temperatura',
+          'Sonómetro (micrófono)','Cable del sonómetro','Cámara fotográfica']},
+  {id:3,nombre:'Frenómetro\n+ Luxómetro',
+   titulo:'EQUIPO FRENÓMETRO + LUXÓMETRO',
+   marca:'GOLD ELECTRONIC',plataforma:'FRM7008060608',
+   linea:'LINEA MOTOS',codigo:'F-MT-04',version:'02',
+   items:['Conexiones eléctricas y red','Enciende la torre del equipo',
+          'Enciende monitor del equipo','Teclado','Ratón (Mouse)',
+          'Rodillos frenómetro','Sensores de fuerza','Sistema hidráulico',
+          'Luxómetro (óptica)','Cable luxómetro','Sistema de nivelación',
+          'Cámara fotográfica']},
+  {id:4,nombre:'Detector de Holguras\n+ Luxómetro',
+   titulo:'EQUIPO DETECTOR DE HOLGURAS + LUXÓMETRO',
+   marca:'GOLD ELECTRONIC',plataforma:'DH008080670-0082',
+   linea:'LINEA MIXTA',codigo:'F-MX-01',version:'02',
+   items:['Conexiones eléctricas y red','Enciende la torre del equipo',
+          'Enciende monitor del equipo','Teclado','Ratón (Mouse)',
+          'Plataforma oscilante','Sistema hidráulico oscilante',
+          'Sensores de holgura','Luxómetro (óptica)','Cable luxómetro',
+          'Sistema de nivelación','Cámara fotográfica']},
+  {id:5,nombre:'Suspensión\n+ Taxímetro',
+   titulo:'EQUIPO SUSPENSIÓN + TAXÍMETRO',
+   marca:'GOLD ELECTRONIC',plataforma:'MD5008080608',
+   linea:'LINEA MIXTA',codigo:'F-MX-02',version:'02',
+   items:['Conexiones eléctricas y red','Enciende la torre del equipo',
+          'Enciende monitor del equipo','Teclado','Ratón (Mouse)',
+          'Plataforma suspensión','Sensores de vibración','Sistema hidráulico',
+          'Taxímetro (sensor)','Cable taxímetro','Cámara fotográfica']},
+  {id:6,nombre:'Frenómetro\n+ Desviación',
+   titulo:'EQUIPO FRENÓMETRO + DESVIACIÓN',
+   marca:'GOLD ELECTRONIC',plataforma:'FRE008080663',
+   linea:'LINEA MIXTA',codigo:'F-MX-03',version:'02',
+   items:['Conexiones eléctricas y red','Enciende la torre del equipo',
+          'Enciende monitor del equipo','Teclado','Ratón (Mouse)',
+          'Rodillos frenómetro','Sensores de fuerza','Sistema hidráulico',
+          'Plataforma desviación lateral','Sensores desviación',
+          'Sistema de nivelación','Cámara fotográfica']},
+  {id:7,nombre:'Analizador de Gases\n+ Sonómetro V2',
+   titulo:'EQUIPO ANALIZADOR DE GASES + SONÓMETRO V2',
+   marca:'GOLD ELECTRONIC',plataforma:'OPA008010',
+   linea:'LINEA MIXTA',codigo:'F-MX-04',version:'02',
+   items:['Conexiones eléctricas y red','Enciende la torre del equipo',
+          'Enciende monitor del equipo','Teclado','Ratón (Mouse)',
+          'Sistema de filtros','Bomba de succión','Sistema de mangueras',
+          'Sonda de gases','Captador de RPM','Sonda de temperatura',
+          'Sonómetro (micrófono)','Cable del sonómetro','Cámara fotográfica']},
+];
+const DIAS = ['LUNES','MARTES','MIÉRCOLES','JUEVES','VIERNES','SÁBADO'];
+
+let equipoActual = null;
+let deferredPrompt = null;
+
+// ══════════════════════════════════════════════
+//  SERVICE WORKER
+// ══════════════════════════════════════════════
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(()=>{});
+}
+
+// ══════════════════════════════════════════════
+//  INSTALAR PWA
+// ══════════════════════════════════════════════
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById('installBanner').classList.add('show');
+});
+document.getElementById('btnInstall').onclick = async () => {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  const {outcome} = await deferredPrompt.userChoice;
+  deferredPrompt = null;
+  document.getElementById('installBanner').classList.remove('show');
+};
+window.addEventListener('appinstalled', () => {
+  document.getElementById('installBanner').classList.remove('show');
+});
+
+// ══════════════════════════════════════════════
+//  OFFLINE
+// ══════════════════════════════════════════════
+function checkOnline() {
+  document.getElementById('offlineBar').classList
+    .toggle('show', !navigator.onLine);
+}
+window.addEventListener('online', checkOnline);
+window.addEventListener('offline', checkOnline);
+checkOnline();
+
+// ══════════════════════════════════════════════
+//  MENÚ – construir tarjetas
+// ══════════════════════════════════════════════
+const grid = document.getElementById('menuGrid');
+EQUIPOS.forEach(eq => {
+  const card = document.createElement('div');
+  card.className = 'eq-card';
+  card.innerHTML = `
+    <div class="eq-num">${eq.id}</div>
+    <div class="eq-info">
+      <h3>${eq.nombre.replace('\n',' ')}</h3>
+      <p>${eq.marca} · ${eq.modelo||eq.plataforma}</p>
+      <span class="eq-badge">${eq.linea}</span>
+    </div>
+    <div class="eq-arrow">›</div>`;
+  card.onclick = () => abrirForm(eq.id);
+  grid.appendChild(card);
+});
+
+// ══════════════════════════════════════════════
+//  NAVEGACIÓN
+// ══════════════════════════════════════════════
+let currentNav = 0;
+function navTo(n) {
+  currentNav = n;
+  ['menuPage','histPage'].forEach((id,i) => {
+    document.getElementById(id).style.display = (i===n) ? 'block' : 'none';
+  });
+  document.getElementById('formPage').style.display = 'none';
+  document.getElementById('btnVolver').classList.remove('show');
+  document.querySelectorAll('.nav-btn').forEach((b,i) =>
+    b.classList.toggle('active', i===n));
+  document.getElementById('topTitle').textContent =
+    n===0 ? 'Sistema de Chequeo' : 'Historial de Registros';
+  document.getElementById('scrollArea').scrollTop = 0;
+  if (n===1) renderHistorial();
+}
+
+function irMenu() {
+  navTo(0);
+}
+
+// ══════════════════════════════════════════════
+//  ABRIR FORMULARIO
+// ══════════════════════════════════════════════
+function abrirForm(id) {
+  equipoActual = EQUIPOS.find(e => e.id === id);
+  const eq = equipoActual;
+
+  // cabecera
+  document.getElementById('fh-nombre').textContent = eq.titulo;
+  document.getElementById('fh-cod').textContent = eq.codigo;
+  document.getElementById('fh-ver').textContent = eq.version;
+
+  // campos info
+  document.getElementById('fi-lugar').value = eq.linea;
+  document.getElementById('fi-marca').value = eq.marca;
+  document.getElementById('fi-ficha').value = '';
+  const hoy = new Date().toISOString().split('T')[0];
+  document.getElementById('fi-fecha').value = hoy;
+  document.getElementById('fi-mes').value = hoy.slice(0,7);
+  document.getElementById('fi-firma').value = '';
+  document.getElementById('fi-mant').value = '';
+  document.getElementById('fi-obs').value = '';
+
+  // Recuperar URL drive guardada
+  const savedUrl = localStorage.getItem('cdi_driveUrl') || '';
+  document.getElementById('fi-drive').value = savedUrl;
+
+  // tabla
+  const head = document.getElementById('chkHead');
+  const body = document.getElementById('chkBody');
+
+  head.innerHTML = `
+    <tr>
+      <th rowspan="2" style="width:32px">No.</th>
+      <th rowspan="2" class="cond-head" style="min-width:160px">CONDICIÓN</th>
+      ${DIAS.map(d=>`<th colspan="2">${d}</th>`).join('')}
+    </tr>
+    <tr>
+      ${DIAS.map(()=>`<th class="th-bm">B</th><th class="th-bm">M</th>`).join('')}
+    </tr>`;
+
+  body.innerHTML = eq.items.map((item, i) => `
+    <tr>
+      <td class="num-cell">${i+1}</td>
+      <td class="cond-cell">${item}</td>
+      ${DIAS.map((_,di) => `
+        <td><input type="checkbox" class="chkbox" id="c${id}_${i}_${di}_b"></td>
+        <td><input type="checkbox" class="chkbox" id="c${id}_${i}_${di}_m"></td>
+      `).join('')}
+    </tr>`).join('');
+
+  // mostrar
+  document.querySelectorAll('#menuPage,#histPage').forEach(p => p.style.display='none');
+  document.getElementById('formPage').style.display = 'block';
+  document.getElementById('btnVolver').classList.add('show');
+  document.getElementById('topTitle').textContent = `Equipo ${eq.id}`;
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('scrollArea').scrollTop = 0;
+
+  // ocultar alertas
+  document.getElementById('alertOk').classList.remove('show');
+  document.getElementById('alertErr').classList.remove('show');
+}
+
+// ══════════════════════════════════════════════
+//  GUARDAR + EXCEL
+// ══════════════════════════════════════════════
+function guardar() {
+  const eq = equipoActual;
+  if (!eq) return;
+
+  const ficha = document.getElementById('fi-ficha').value;
+  const lugar = document.getElementById('fi-lugar').value;
+  const mes   = document.getElementById('fi-mes').value;
+  const marca = document.getElementById('fi-marca').value;
+  const firma = document.getElementById('fi-firma').value;
+  const mant  = document.getElementById('fi-mant').value;
+  const fecha = document.getElementById('fi-fecha').value;
+  const obs   = document.getElementById('fi-obs').value;
+  const drive = document.getElementById('fi-drive').value.trim();
+
+  // Guardar URL drive para la próxima vez
+  if (drive) localStorage.setItem('cdi_driveUrl', drive);
+
+  // Recolectar chequeos
+  const checks = [];
+  eq.items.forEach((item, i) => {
+    const fila = {'No.': i+1, 'CONDICIÓN': item};
+    DIAS.forEach((dia, di) => {
+      const b = document.getElementById(`c${eq.id}_${i}_${di}_b`)?.checked;
+      const m = document.getElementById(`c${eq.id}_${i}_${di}_m`)?.checked;
+      fila[`${dia} B`] = b ? '✓' : '';
+      fila[`${dia} M`] = m ? '✓' : '';
+    });
+    checks.push(fila);
+  });
+
+  document.getElementById('spinner').classList.add('show');
+
+  setTimeout(() => {
+    try {
+      // ── Construir Excel ──────────────────────
+      const wb = XLSX.utils.book_new();
+
+      const aoa = [
+        ['LISTA DE CHEQUEO – CENTRO DE DIAGNÓSTICO AUTOMOTRIZ DE PASTO'],
+        ['NIT: 800.253.040-2 · CARRERA 2 N°21DN-170'],
+        [],
+        ['CÓDIGO:', eq.codigo, '', 'VERSIÓN:', eq.version],
+        [],
+        [eq.titulo],
+        [],
+        ['FICHA No.:', ficha, '', 'LUGAR:', lugar],
+        ['MES – AÑO:', mes,   '', 'MARCA:', marca],
+        ['PLATAFORMA:', eq.plataforma],
+        [],
+        // cabecera tabla
+        ['No.', 'CONDICIÓN',
+          ...DIAS.flatMap(d => [`${d} (B)`, `${d} (M)`])
+        ],
+        // items
+        ...checks.map(c => [
+          c['No.'], c['CONDICIÓN'],
+          ...DIAS.flatMap(d => [c[`${d} B`]||'', c[`${d} M`]||''])
+        ]),
+        [],
+        ['FIRMA PERSONA RESPONSABLE:', firma],
+        ['MANTENIMIENTO SEMANAL:', mant, '', 'FECHA:', fecha],
+        [],
+        ['OBSERVACIONES:', obs],
+        [],
+        ['Registro generado:', new Date().toLocaleString('es-CO')]
+      ];
+
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+      // anchos
+      ws['!cols'] = [
+        {wch:6},{wch:32},
+        ...DIAS.flatMap(() => [{wch:10},{wch:10}])
+      ];
+
+      XLSX.utils.book_append_sheet(wb, ws, 'Chequeo');
+
+      const mesStr = mes.replace('-','_') || 'sin_fecha';
+      const fileName = `Chequeo_Equipo${eq.id}_${mesStr}.xlsx`;
+      XLSX.writeFile(wb, fileName);
+
+      // Guardar en localStorage
+      const payload = {
+        equipo: eq.titulo, ficha, lugar, mes, firma, mant, fecha, obs,
+        checks, timestamp: new Date().toISOString()
+      };
+      const hist = JSON.parse(localStorage.getItem('cdi_hist') || '[]');
+      hist.unshift(payload);
+      localStorage.setItem('cdi_hist', JSON.stringify(hist.slice(0, 100)));
+
+      document.getElementById('spinner').classList.remove('show');
+
+      // Enviar a Drive
+      if (drive) {
+        const wbBin = XLSX.write(wb, {bookType:'xlsx', type:'base64'});
+        fetch(drive, {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({fileName, fileData: wbBin, metadata: payload})
+        })
+        .then(r => showAlert(r.ok ? 'ok' : 'err'))
+        .catch(() => showAlert('err'));
+      } else {
+        showAlert('ok');
+      }
+
+    } catch(e) {
+      document.getElementById('spinner').classList.remove('show');
+      showAlert('err');
+      console.error(e);
+    }
+  }, 300);
+}
+
+function showAlert(tipo) {
+  const ok  = document.getElementById('alertOk');
+  const err = document.getElementById('alertErr');
+  ok.classList.remove('show'); err.classList.remove('show');
+  (tipo==='ok' ? ok : err).classList.add('show');
+  document.getElementById('scrollArea').scrollTop = 9999;
+  setTimeout(() => {
+    ok.classList.remove('show'); err.classList.remove('show');
+  }, 5000);
+}
+
+// ══════════════════════════════════════════════
+//  HISTORIAL
+// ══════════════════════════════════════════════
+function renderHistorial() {
+  const hist = JSON.parse(localStorage.getItem('cdi_hist') || '[]');
+  const list = document.getElementById('histList');
+  if (!hist.length) {
+    list.innerHTML = '<p class="hist-empty">📋 Aún no hay registros guardados.<br>Llena y guarda una planilla para verla aquí.</p>';
+    return;
+  }
+  list.innerHTML = hist.map((h,i) => `
+    <div class="hist-card">
+      <h4>${h.equipo}</h4>
+      <p>📅 Mes: ${h.mes||'—'} · Ficha: ${h.ficha||'—'}</p>
+      <p>📍 ${h.lugar||'—'} · ✍️ ${h.firma||'—'}</p>
+      <p style="color:#94a3b8;font-size:.72em;margin-top:4px">
+        Guardado: ${new Date(h.timestamp).toLocaleString('es-CO')}
+      </p>
+      ${h.obs ? `<p style="margin-top:6px;font-size:.8em;color:#475569">💬 ${h.obs}</p>` : ''}
+    </div>`).join('');
+}
+
+function limpiarHistorial() {
+  if (confirm('¿Borrar todo el historial local?')) {
+    localStorage.removeItem('cdi_hist');
+    renderHistorial();
+  }
+}
+
+// ══════════════════════════════════════════════
+//  MODAL
+// ══════════════════════════════════════════════
+function openModal()  { document.getElementById('driveModal').classList.add('open'); }
+function closeModal() { document.getElementById('driveModal').classList.remove('open'); }
+
+// init
+navTo(0);
+</script>
+</body>
+</html>
